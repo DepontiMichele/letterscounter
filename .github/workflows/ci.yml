@@ -23,12 +23,19 @@ jobs:
         docker run -d -p 8000:8000 --name api-container word-counter-api:latest
         
     - name: Wait for API to be ready
-      run: sleep 3
+      run: sleep 4
 
     - name: Test API Endpoint
       run: |
+        echo "=== Stato del container (UP o EXITED?) ==="
+        docker ps -a
+        
+        echo "=== Log interni del container ==="
+        docker logs api-container
+        
+        echo "=== Inizio del test con CURL ==="
         echo "Testing root endpoint..."
-        curl -s http://localhost:8000/
+        curl -i http://localhost:8000/
         
         echo -e "\nTesting word count endpoint..."
         RESPONSE=$(curl -s -X POST http://localhost:8000/count \
@@ -41,7 +48,6 @@ jobs:
           echo "Test Passed!"
         else
           echo "Test Failed!"
-          docker logs api-container
           exit 1
         fi
 
