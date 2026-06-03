@@ -1,0 +1,50 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build Docker Image
+      run: |
+        docker build -t word-counter-api:latest .
+
+    - name: Run Docker Container
+      run: |
+        docker run -d -p 8000:8000 --name api-container word-counter-api:latest
+        
+    - name: Wait for API to be ready
+      run: sleep 3
+
+    - name: Test API Endpoint
+      run: |
+        echo "Testing root endpoint..."
+        curl -s http://localhost:8000/
+        
+        echo -e "\nTesting word count endpoint..."
+        RESPONSE=$(curl -s -X POST http://localhost:8000/count \
+          -H "Content-Type: application/json" \
+          -d '{"text": "Ciao GitHub Actions questa è una prova"}')
+        
+        echo "Response received: $RESPONSE"
+        
+        if [[ "$RESPONSE" == *"\"word_count\":7"* ]]; then
+          echo "Test Passed!"
+        else
+          echo "Test Failed!"
+          docker logs api-container
+          exit 1
+        fi
+
+    - name: Stop Container
+      if: always()
+      run: docker stop api-container && docker rm api-container
